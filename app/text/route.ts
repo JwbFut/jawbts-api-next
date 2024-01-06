@@ -1,3 +1,5 @@
+import { ResponseUtils } from "../responseUtils";
+
 export const dynamic = 'force-dynamic'
 
 const textList = [
@@ -71,5 +73,5 @@ const textList = [
 
 export function GET() {
     const ans = Math.floor(Math.random() * textList.length / 2) * 2;
-    return Response.json({"a" : textList[ans], "b" : textList[ans + 1]});
+    return ResponseUtils.successJson({"a" : textList[ans], "b" : textList[ans + 1]});
 }
