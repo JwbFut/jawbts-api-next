@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 const textList = [
     "昔人已逝","留下如星辰般繁华",
     "新秀已至","带来如明灯般前程",
@@ -68,6 +70,6 @@ const textList = [
 ];
 
 export function GET() {
-    let ans = Math.floor(Math.random() * textList.length / 2) * 2;
+    const ans = Math.floor(Math.random() * textList.length / 2) * 2;
     return Response.json({"a" : textList[ans], "b" : textList[ans + 1]});
 }
