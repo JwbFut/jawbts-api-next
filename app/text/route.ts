@@ -1,4 +1,4 @@
-import { ResponseUtils } from "../responseUtils";
+import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic'
 
