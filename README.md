@@ -1,3 +1,8 @@
+## Jawbts Api
+基于next.js框架的api, 应当被部署在vercel的serverless服务上.
+
+## 请看默认readme在这里叨叨
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
