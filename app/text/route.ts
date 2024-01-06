@@ -65,9 +65,9 @@ const textList = [
     "前有古人, 星光灿烂", "后有来者, 群英堂堂",
     "先天下之忧而忧", "后天下之乐而乐",
     "不以物喜", "不以己悲",
-  ];
+];
 
 export function GET() {
-    const ans = Math.floor(Math.random() * textList.length / 2) * 2;
+    let ans = Math.floor(Math.random() * textList.length / 2) * 2;
     return Response.json({"a" : textList[ans], "b" : textList[ans + 1]});
 }
