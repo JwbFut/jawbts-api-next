@@ -6,8 +6,8 @@ const stuffs: { [key: string]: any } = {
         // checkUrl: "https://baidu.com",
         branches: {
             "fabric-1.17.x": {
-                latestVersion: "1.0.6",
-                downloadUrl: "https://github.com/winsrewu/NoGLErr/releases/tag/1.0.6"
+                latestVersion: "1.0.7",
+                downloadUrl: "https://github.com/winsrewu/NoGLErr/releases/tag/1.0.7"
             }
         }
     }
