@@ -143,7 +143,7 @@ const textList = [
 ];
 
 export function GET() {
-    const useMultisentence = Math.random() >= 0.5;
+    const useMultisentence = Math.random() >= 0.9;
     // const useMultisentence = true;
     let selectedList;
     if (useMultisentence) {
