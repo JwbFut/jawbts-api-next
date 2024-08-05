@@ -2,7 +2,7 @@ import { AuthUtils } from "@/components/AuthUtils";
 import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);

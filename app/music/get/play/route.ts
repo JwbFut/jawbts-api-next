@@ -4,7 +4,7 @@ import { MusicUtils } from "@/components/MusicUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { createClient, sql } from "@vercel/postgres";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const login = await AuthUtils.checkLogin(request);

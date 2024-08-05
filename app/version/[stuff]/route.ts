@@ -1,6 +1,6 @@
 import { ResponseUtils } from "@/components/ResponseUtils"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 const stuffs: { [key: string]: any } = {
     noglerr: {

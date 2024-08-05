@@ -13,10 +13,15 @@ const nextConfig = {
                         key: 'Access-Control-Allow-Headers',
                         value: '*',
                     }
-                ]
+                ],
             }
         ]
+    },
+    experimental: {
+        instrumentationHook : true,
     }
 }
+
+
 
 module.exports = nextConfig

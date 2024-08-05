@@ -1,27 +1,22 @@
+import { jaw_db, RefTokenType } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
 import { ErrorUtils } from "@/components/ErrorUtils";
-import { sql } from "@vercel/postgres";
-import { redirect } from "next/navigation";
+import { ResponseUtils } from "@/components/ResponseUtils";
+import { db, sql } from "@vercel/postgres";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
-    const { rows } = await sql`SELECT id FROM users WHERE state = ${state}`;
-    if (rows.length === 0) {
-        redirect('https://jawbts.org/auth.html#fail_reason=wrong_state');
-    }
-    const id = rows.map((row) => {
-        return row.id;
-    });
+    if (!code || !state) return ResponseUtils.missing("params: code / state");
 
     let data = null;
     try {
         data = await fetch('https://github.com/login/oauth/access_token?' +
-            'client_id=0f87423a9c6e9047ff57&' +
+            'client_id=' + process.env.GITHUB_CLIENT_ID + '&' +
             'client_secret=' + process.env.GITHUB_CLIENT_SECRET + '&' +
             'code=' + code, {
             method: "POST",
@@ -29,22 +24,23 @@ export async function GET(request: Request) {
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             }
-        }).then((response) => response.json()).then((data) => {return data});
-    } catch(e) {
+        });
+        data = await data.json();
+    } catch (e) {
         ErrorUtils.log(e as Error);
     }
 
     if (data == null) {
-        redirect('https://jawbts.org/auth.html#fail_reason=Server_Network_Exception');
+        return ResponseUtils.serverError("Server Network Error");
     }
 
     const access_token = data.access_token;
     if (access_token == null) {
-        redirect('https://jawbts.org/auth.html#fail_reason=Bad_Code_(Maybe_Expired)');
+        return ResponseUtils.badToken("(Maybe Expired)");
     }
 
     if (data.token_type != "bearer") {
-        redirect('https://jawbts.org/auth.html#fail_reason=Wrong_Token_Type');
+        return ResponseUtils.badToken("Wrong Token Type");
     }
 
     data = null;
@@ -56,31 +52,47 @@ export async function GET(request: Request) {
                 "Accept": "application/json",
                 "Authorization": "Bearer " + access_token
             }
-        }).then((response) => response.json()).then((data) => {return data});
-    } catch(e) {
+        });
+        data = await data.json();
+    } catch (e) {
         ErrorUtils.log(e as Error);
     }
 
     if (data == null) {
-        redirect('https://jawbts.org/auth.html#fail_reason=Server_Network_Exception');
+        return ResponseUtils.serverError("Server Network Error");
     }
 
     if (data.id == null) {
-        redirect('https://jawbts.org/auth.html#fail_reason=Bad_Token');
+        return ResponseUtils.serverError("data.id Does Not Exist")
     }
 
-    if (data.id != id[0]) {
-        redirect('https://jawbts.org/auth.html#fail_reason=Wrong_Account');
-    }
+    const res = await jaw_db
+        .selectFrom("users")
+        .select(["username", "ref_tokens"])
+        .where("id", "=", data.id)
+        .executeTakeFirst();
+    if (!res) return ResponseUtils.bad("Account: Account Not Exists");
 
-    const j_token = AuthUtils.generateToken();
+    res.ref_tokens = AuthUtils.removeExpireRefTokensFrom(res.ref_tokens);
 
-    sql`UPDATE users
-    SET state = null, token = ${AuthUtils.stringToHashConversion(j_token)},
-    token_expire = to_timestamp(${Date.now() / 1000 + 3600 * 24 * 30})
-    WHERE id = ${id[0]}`;
+    let link = null;
+    res.ref_tokens.forEach((v, k) => {
+        if (v.state_c == state && v.ref_token == null) {
+            link = k;
+        }
+    })
+    if (link == null) return ResponseUtils.bad("State: State Not Exists (maybe expired)");
 
-    redirect('https://jawbts.org/auth.html#subscribe_to_wisw_on_bilibili_please_'
-        + '_to_tell_the_truth_im_just_making_this_long_enough_to_hide_token_haha=true'
-        + '&token=' + j_token);
+    const ref_token = AuthUtils.generateToken();
+    const expire_date = new Date();
+    expire_date.setMonth(expire_date.getMonth() + 6);
+    res.ref_tokens[link].exp_time = expire_date;
+    res.ref_tokens[link].ref_token = ref_token;
+    res.ref_tokens[link].scope = ["website", "api"];
+
+    // 这是玄学 不要乱换行
+    let client = await db.connect();
+    await client.query(`UPDATE users SET ref_tokens = '${JSON.stringify(res.ref_tokens)}' WHERE id = ${data.id};`);
+
+    return ResponseUtils.successJson({ jwt: await AuthUtils.getJwt(res.username, ["website", "api"]), ref_token: ref_token, username: res.username, client_id: res.ref_tokens[link].desc_c });
 }

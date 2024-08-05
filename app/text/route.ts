@@ -1,6 +1,6 @@
 import { ResponseUtils } from "@/components/ResponseUtils";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 const textList = [
     "昔人已逝","留下如星辰般繁华",
@@ -87,6 +87,6 @@ const textList = [
 ];
 
 export function GET() {
-    const ans = Math.floor(Math.random() * textList.length / 2) * 2;
+    const ans = Math.round(Math.random() * textList.length / 2) * 2;
     return ResponseUtils.successJson({"a" : textList[ans], "b" : textList[ans + 1]});
 }
