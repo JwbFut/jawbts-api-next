@@ -1,6 +1,7 @@
 import { ResponseUtils } from "@/components/ResponseUtils";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 const textListSquared = [
     ["昔人已逝", "留下如星辰般繁华",

@@ -1,5 +1,7 @@
 import { ResponseUtils } from "@/components/ResponseUtils"
 
+export const runtime = 'edge';
+
 const stuffs: { [key: string]: any } = {
     noglerr: {
         lowestSafeVersion: "1.0.8",
