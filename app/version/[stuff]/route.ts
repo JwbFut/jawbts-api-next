@@ -1,6 +1,7 @@
 import { ResponseUtils } from "@/components/ResponseUtils"
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 const stuffs: { [key: string]: any } = {
     noglerr: {

@@ -1,6 +1,8 @@
 import { ResponseUtils } from "@/components/ResponseUtils";
 
-const availableStuff = ["noglerr"]
+export const runtime = 'edge';
+
+const availableStuff = ["noglerr"];
 
 export function GET() {
     return ResponseUtils.successJson({"availableStuff": availableStuff});
