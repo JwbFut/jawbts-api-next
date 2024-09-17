@@ -18,11 +18,13 @@ CREATE TABLE users (
     username    TEXT        NOT NULL UNIQUE,
     avatar_url  TEXT        NOT NULL,
     description TEXT        NOT NULL,
-    ref_tokens  JSONB       NOT NULL
+    ref_tokens  JSONB       NOT NULL,
+    music_data  JSONB       NOT NULL,
+    async_key   JSONB       NOT NULL
 );
 ```
 ### 用户
 ```sql
-INSERT INTO users (id, username, avatar_url, description, ref_tokens) VALUES (78122384,'winsrewu','https://avatars.githubusercontent.com/u/78122384?v=4','','[]');
+INSERT INTO users (id, username, avatar_url, description, ref_tokens, music_data) VALUES (78122384,'winsrewu','https://avatars.githubusercontent.com/u/78122384?v=4','','[]', '[]');
 ```
-注: 为了安全原因, avatar_url只支 https://avatars.githubusercontent.com/u/...  
+注: 为了安全原因, avatar_url只支 https://avatars.githubusercontent.com/u/...  当然你用dataurl也不是不行  
