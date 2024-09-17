@@ -12,7 +12,13 @@ export async function POST(request: Request) {
 
     if (!res.username) return ResponseUtils.badToken("No aud claim.");
 
-    const formData = await request.json();
+    let formData;
+    try {
+        formData = await request.json();
+    } catch (e) {
+        return ResponseUtils.bad("Request. Invalid JSON.")
+    }
+    
     let description = formData["description"];
     let avatar_url = formData["avatar_url"];
 
