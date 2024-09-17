@@ -15,6 +15,19 @@ export interface RefTokenType {
     scope: string[] | null;
 }
 
+export interface MusicDataType {
+    title: string;
+    author: string;
+    inner_id: string;
+    tags: string[];
+    static_tags: string[];
+    likes: number;
+}
+
+export interface AsyncKeyType {
+    music_data: number;
+}
+
 export interface JwksTable {
     n: string;
     pri_key: string;
@@ -28,4 +41,6 @@ export interface UsersTable {
     avatar_url: string;
     description: string;
     ref_tokens: RefTokenType[];
+    music_data: MusicDataType[];
+    async_key: AsyncKeyType;
 }
