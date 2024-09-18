@@ -5,10 +5,10 @@ import { AuthUtils } from "./components/AuthUtils";
 export async function register() {
     await on_init();
 
-    // 每周一执行
-    schedule.scheduleJob('0 0 0 * * 1', async () => {
-        await do_every_monday();
-    });
+    // 每周一执行 这个不用了, 因为改成vercel的定时任务了
+    // schedule.scheduleJob('0 0 0 * * 1', async () => {
+    //     await do_every_monday();
+    // });
 
     // test, rm in production
     // schedule.scheduleJob('0 */1 * * * ?', async () => {
