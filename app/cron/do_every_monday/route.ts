@@ -3,11 +3,11 @@ import { do_every_monday } from "@/instrumentation";
 
 export const dynamic = 'force-dynamic';
 
-export default function GET(request: Request) {
+export async function GET(request: Request) {
     if (request.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
         return ResponseUtils.needLogin();
     }
-    
+
     do_every_monday();
 
     return ResponseUtils.success();
