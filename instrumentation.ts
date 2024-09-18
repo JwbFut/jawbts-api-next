@@ -16,7 +16,7 @@ export async function register() {
     // });
 }
 
-async function do_every_monday() {
+export async function do_every_monday() {
     update_jwks();
 }
 

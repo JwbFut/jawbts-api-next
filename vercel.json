@@ -1,0 +1,8 @@
+{
+    "crons": [
+        {
+            "path": "/cron/do_every_monday",
+            "schedule": "0 0 0 * * 1"
+        }
+    ]
+}
