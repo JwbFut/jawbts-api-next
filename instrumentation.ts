@@ -33,6 +33,8 @@ async function update_jwks() {
     // expire_date.setMinutes(expire_date.getMinutes() - 1);
     // expire_date.setSeconds(expire_date.getSeconds() + 30);
 
+    console.log("call update_jwks", expire_date);
+
     await jaw_db
         .deleteFrom("jwks")
         .where("cre_time", "<", expire_date)
@@ -40,11 +42,32 @@ async function update_jwks() {
     let res = await jaw_db
         .selectFrom("jwks")
         .select("cre_time")
+        .select("kid")
         .execute();
-    if (res.length >= 8) {
+
+    let need_remove = false;
+    res.forEach((item) => {
+        res.forEach(async (item2) => {
+            // 小于6天? 都给我死!
+            if (item.kid != item2.kid && item.cre_time.getTime() - item2.cre_time.getTime() < -6 * 24 * 60 * 60 * 1000) {
+                need_remove = true;
+            }
+        });
+    });
+
+    if (need_remove) {
+        await jaw_db
+            .deleteFrom("jwks")
+            .execute();
+        console.error("!!!RM JWKS DUE TO DUPLICATE DETECTED!!!");
+    }
+
+    if (res.length >= 8 && !need_remove) {
         return;
     }
     let need_jwks = 8 - res.length;
+    if (need_remove) need_jwks = 8;
+
     let cre_date = new Date();
     for (let i = 0; i < need_jwks; i++) {
         // 面向对象编程算是给我玩明白了
