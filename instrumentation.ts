@@ -49,7 +49,7 @@ async function update_jwks() {
     res.forEach((item) => {
         res.forEach(async (item2) => {
             // 小于6天? 都给我死!
-            if (item.kid != item2.kid && item.cre_time.getTime() - item2.cre_time.getTime() < -6 * 24 * 60 * 60 * 1000) {
+            if (item.kid == item2.kid && item.cre_time.getTime() - item2.cre_time.getTime() < -6 * 24 * 60 * 60 * 1000) {
                 need_remove = true;
             }
         });
@@ -72,7 +72,7 @@ async function update_jwks() {
     for (let i = 0; i < need_jwks; i++) {
         // 面向对象编程算是给我玩明白了
         // 这是多线程, 对象只有一个, 改了就都改了
-        AuthUtils.generateJwk(new Date(cre_date));
+        await AuthUtils.generateJwk(new Date(cre_date));
         cre_date.setDate(cre_date.getDate() - 7);
 
         // test, rm in production
