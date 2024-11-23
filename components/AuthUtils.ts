@@ -7,8 +7,13 @@ export const jwks = jose.createRemoteJWKSet(new URL(process.env.ORIGIN_URL + "/a
 export class AuthUtils {
     static chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    static generateState() {
-        return this.generateRandomString(15);
+    static generateState(ref_tokens: RefTokenType[]) {
+        let state: string;
+        while (true) {
+            state = this.generateRandomString(10);
+            if (!ref_tokens.some((v) => v.state_c == state)) break;
+        }
+        return state;
     }
 
     static generateToken() {

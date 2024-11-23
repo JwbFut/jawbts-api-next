@@ -8,11 +8,12 @@ export interface Database {
 }
 
 export interface RefTokenType {
-    state_c: string | null; // length: 15
-    ref_token: string | null; // length: 20
+    state_c: string | null;
+    ref_token: string | null;
     exp_time: Date | string | null;
-    desc_c: string | null; // description
+    desc_c: string | null;
     scope: string[] | null;
+    otp_code: string | null;
 }
 
 export interface MusicDataType {

@@ -2,15 +2,17 @@ import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { sql } from "@vercel/postgres";
-import { userAgent } from "next/server";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const user_name = searchParams.get('user_name');
+    const res_lgc = await AuthUtils.checkLogin(request);
+    if (res_lgc instanceof Response) {
+        return res_lgc;
+    }
 
-    if (user_name === null) return ResponseUtils.missing("param: user_name");
+    if (!res_lgc.username) return ResponseUtils.badToken("No aud claim.");
+    const user_name = res_lgc.username;
 
     let res = await jaw_db
         .selectFrom("users")
@@ -32,18 +34,17 @@ export async function GET(request: Request) {
 
 
     const state = AuthUtils.generateState(res.ref_tokens);
-    const { browser, os } = userAgent(request);
     let exp_time = new Date();
     exp_time.setMinutes(exp_time.getMinutes() + 1);
+
+    const otp_code = "OTPC" + AuthUtils.generateRandomString(96);
     res.ref_tokens.push({
         state_c: state,
         ref_token: null,
         exp_time: exp_time,
-        desc_c: (os.name ? os.name : "Unknown")
-            + "-" + (browser.name ? browser.name : "Unknown")
-            + "-" + AuthUtils.generateRandomString(5),
+        desc_c: "THIS IS FOR OPT CODE LOGIN",
         scope: null,
-        otp_code: null
+        otp_code: otp_code
     });
 
     await sql`
@@ -53,9 +54,9 @@ export async function GET(request: Request) {
     `;
 
     return ResponseUtils.successJson({
-        url: 'https://github.com/login/oauth/authorize?'
-            + 'client_id=' + process.env.GITHUB_CLIENT_ID + '&'
-            + 'redirect_uri=' + process.env.WEBSITE_URL + '/auth/github/callback' + '&'
-            + 'scope=(no scope)&state=' + state
+        url: process.env.WEBSITE_URL + "/auth/otp?"
+            + "state=" + state
+            + "&username=" + user_name
+            + "&code=" + otp_code
     });
 }
