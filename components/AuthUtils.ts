@@ -12,19 +12,17 @@ export class AuthUtils {
     }
 
     static generateToken() {
-        return this.generateRandomString(20);
+        return this.generateRandomString(100);
     }
 
-    static stringToHashConversion(string: string) {
-        for (var i = 0, hash = 0; i < string.length; i++)
-            hash = Math.imul(31, hash) + string.charCodeAt(i) | 0;
-        return hash.toString();
+    static async hash(string: string, salt: string = "") {
+        return Buffer.from(await crypto.subtle.digest("SHA-512", new TextEncoder().encode(string + salt))).toString("base64");
     }
 
     static generateRandomString(length: number) {
         let res = "";
         for (let i = 0; i < length; i++) {
-            res += this.chars[Math.floor(Math.random() * this.chars.length)];
+            res += this.chars[crypto.getRandomValues(new Uint32Array(1))[0] % this.chars.length];
         }
         return res;
     }

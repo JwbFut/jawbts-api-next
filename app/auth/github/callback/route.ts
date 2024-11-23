@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     const expire_date = new Date();
     expire_date.setMonth(expire_date.getMonth() + 6);
     res.ref_tokens[link].exp_time = expire_date;
-    res.ref_tokens[link].ref_token = ref_token;
+    res.ref_tokens[link].ref_token = await AuthUtils.hash(ref_token + res.username, "");
     res.ref_tokens[link].scope = ["website", "api"];
 
     // 这是玄学 不要乱换行

@@ -20,8 +20,9 @@ export async function GET(request: Request) {
     if (!res) return ResponseUtils.bad("username.");
 
     let real_ref = null;
+    const decoded_token = decodeURIComponent(refresh_token);
     for (let i in res.ref_tokens) {
-        if (res.ref_tokens[i].ref_token == refresh_token) {
+        if (res.ref_tokens[i].ref_token == decoded_token) {
             real_ref = res.ref_tokens[i];
         }
     }
