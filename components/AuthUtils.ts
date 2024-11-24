@@ -32,27 +32,30 @@ export class AuthUtils {
         return res;
     }
 
-    static async checkLogin(request: Request) {
+    static async checkLogin(request: Request, additional_scope: string[] = []) {
         const auth = request.headers.get("Authorization");
         if (!auth) return ResponseUtils.needLogin();
         if (!auth.startsWith("Bearer ")) return ResponseUtils.badToken("Unsupported Token");
 
-        return await this.checkToken(auth.substring(7))
+        return await this.checkToken(auth.substring(7), additional_scope);
     }
 
-    static async checkToken(token: string) {
+    static async checkToken(token: string, additional_scope: string[] = []) {
         try {
             const { payload } = await jose.jwtVerify(token, jwks, {
                 issuer: 'jawbts-api'
             });
-            if (!payload.scope) return ResponseUtils.badToken("Bad Token");;
-            if (!(payload.scope instanceof Array)) return ResponseUtils.badToken("Bad Token");;
-            return payload.scope.includes("api") ? { username: payload.aud } : ResponseUtils.badToken("Bad Token");;
+            if (!payload.scope) return ResponseUtils.badToken("Bad Token");
+            if (!(payload.scope instanceof Array)) return ResponseUtils.badToken("Bad Token");
+            for (const scope of additional_scope) {
+                if (!payload.scope.includes(scope)) return ResponseUtils.badToken("Permission Denied");
+            }
+            return payload.scope.includes("api") ? { username: payload.aud } : ResponseUtils.badToken("Permission Denied");
         } catch(err) {
             if ((err as Error).message === '"exp" claim timestamp check failed') {
-                return ResponseUtils.badToken("Token Expired");;
+                return ResponseUtils.badToken("Token Expired");
             }
-            return ResponseUtils.badToken("Bad Token");;
+            return ResponseUtils.badToken("Bad Token");
         }
     }
 

@@ -6,7 +6,7 @@ import { sql } from "@vercel/postgres";
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const res_lgc = await AuthUtils.checkLogin(request);
+    const res_lgc = await AuthUtils.checkLogin(request, ["otp"]);
     if (res_lgc instanceof Response) {
         return res_lgc;
     }
