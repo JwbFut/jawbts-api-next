@@ -46,27 +46,7 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
 
 ## SQL初始化
-### jwks
-```sql
-CREATE TABLE jwks (
-    n           CHAR(683)   NOT NULL,
-    pri_key     CHAR(3322)  NOT NULL,
-    cre_time    TIMESTAMPTZ NOT NULL,
-    kid         CHAR(8)     NOT NULL PRIMARY KEY
-);
-```
-### users
-```sql
-CREATE TABLE users (
-    id          BIGINT      NOT NULL PRIMARY KEY,
-    username    TEXT        NOT NULL UNIQUE,
-    avatar_url  TEXT        NOT NULL,
-    description TEXT        NOT NULL,
-    ref_tokens  JSONB       NOT NULL,
-    music_data  JSONB       NOT NULL,
-    async_key   JSONB       NOT NULL
-);
-```
+参见[基于Squelize的SQL初始化脚本仓库](https://github.com/JwbFut/jawbts-api-next-db/)
 ### 用户
 ```sql
 INSERT INTO users (id, username, avatar_url, description, ref_tokens, music_data) VALUES (78122384,'winsrewu','https://avatars.githubusercontent.com/u/78122384?v=4','','[]', '[]');
