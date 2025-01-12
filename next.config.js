@@ -12,13 +12,17 @@ const nextConfig = {
                     {
                         key: 'Access-Control-Allow-Headers',
                         value: '*',
-                    }
+                    },
+                    {
+                        key: 'X-Content-Type-Options',
+                        value: 'nosniff',
+                    },
                 ],
             }
         ]
     },
     experimental: {
-        instrumentationHook : true,
+        instrumentationHook: true,
     }
 }
 
