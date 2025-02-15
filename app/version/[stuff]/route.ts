@@ -9,11 +9,11 @@ const stuffs: { [key: string]: any } = {
         // checkUrl: "https://baidu.com",
         branches: {
             "fabric-1.17.x": {
-                latestVersion: "1.0.9",
+                latestVersion: "1.0.10",
                 downloadUrl: "https://modrinth.com/mod/noglerr/versions#all-versions"
             },
             "fabric-1.21": {
-                latestVersion: "1.0.9",
+                latestVersion: "1.0.10",
                 downloadUrl: "https://modrinth.com/mod/noglerr/versions#all-versions"
             }
         }
