@@ -1,7 +1,8 @@
-import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
-import { db } from "@vercel/postgres";
 import { userAgent } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -14,11 +15,17 @@ export async function GET(request: Request) {
 
     if (!code || !state || !username) return ResponseUtils.missing("params: code / state / username");
 
-    const res = await jaw_db
-        .selectFrom("users")
-        .select("ref_tokens")
-        .where("username", "=", username)
-        .executeTakeFirst();
+    let res;
+    try {
+        res = await User.findOne({
+            attributes: ["ref_tokens"],
+            where: { username: username }
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
+
     if (!res) return ResponseUtils.bad("Account: Account Not Exists");
 
     res.ref_tokens = AuthUtils.removeExpireRefTokensFrom(res.ref_tokens);
@@ -51,9 +58,29 @@ export async function GET(request: Request) {
         otp_code: null
     });
 
-    // 这是玄学 不要乱换行
-    let client = await db.connect();
-    await client.query(`UPDATE users SET ref_tokens = '${JSON.stringify(res.ref_tokens)}' WHERE username = '${username}';`);
+    try {
+        await sequelize.transaction(async (t) => {
+            await User.update({
+                ref_tokens: res.ref_tokens
+            }, {
+                where: {
+                    username: username
+                },
+                transaction: t
+            });
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
-    return ResponseUtils.successJson({ jwt: await AuthUtils.getJwt(username, ["website", "api"]), ref_token: ref_token, username: username, client_id: desc_c });
+    let jwt;
+    try {
+        jwt = await AuthUtils.getJwt(res.username, ["website", "api", "otp"]);
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
+
+    return ResponseUtils.successJson({ jwt: jwt, ref_token: ref_token, username: username, client_id: desc_c });
 }

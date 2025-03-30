@@ -1,6 +1,9 @@
 import { ResponseUtils } from "./ResponseUtils";
-import { jaw_db, RefTokenType } from "@/app/Db";
 import * as jose from "jose"
+import { Jwk, RefTokenType } from "@/components/database/dbTypes";
+import sequelize from "./database/db";
+import { Op, Transaction } from "sequelize";
+import { ErrorUtils } from "./ErrorUtils";
 
 export const jwks = jose.createRemoteJWKSet(new URL(process.env.ORIGIN_URL + "/auth/keys"));
 
@@ -51,7 +54,7 @@ export class AuthUtils {
                 if (!payload.scope.includes(scope)) return ResponseUtils.badToken("Permission Denied");
             }
             return payload.scope.includes("api") ? { username: payload.aud } : ResponseUtils.badToken("Permission Denied");
-        } catch(err) {
+        } catch (err) {
             if ((err as Error).message === '"exp" claim timestamp check failed') {
                 return ResponseUtils.badToken("Token Expired");
             }
@@ -63,7 +66,7 @@ export class AuthUtils {
      * 直接写到数据库里面去
      * @param cre_time 创建时间
      */
-    static async generateJwk(cre_time: Date = new Date()) {
+    static async generateJwk(cre_time: Date = new Date(), t: Transaction) {
         const { publicKey, privateKey } =
             await jose.generateKeyPair("RS256", { modulusLength: 4096, extractable: true });
         let [pri_jwk, pub_jwk] =
@@ -72,34 +75,28 @@ export class AuthUtils {
 
         if (!pub_jwk.n) throw Error("pub_jwk.n is undefined.");
 
-        let kid;
-        let flag = false;
-        while (!flag) {
-            kid = AuthUtils.generateRandomString(8);
-            try {
-                await jaw_db
-                    .insertInto("jwks")
-                    .values({ n: pub_jwk.n, pri_key: pri_jwk, cre_time: cre_time, kid: kid })
-                    .execute();
-                flag = true;
-            } catch (err) {
-                if ((err as Error).message === 'duplicate key value violates unique constraint "jwks_pkey"') {
-                    continue;
-                }
-                throw err;
-            }
+        let jwks_in_db;
+        try {
+            jwks_in_db = await Jwk.findAll({
+                attributes: ["kid"],
+            });
+        } catch (e) {
+            ErrorUtils.log(e as Error);
+            return ResponseUtils.serverError("Database Error");
         }
-    }
 
-    /**
-     * 注意, private key在里面
-     * @returns all jwks (promise)
-     */
-    static getJwks() {
-        return jaw_db
-            .selectFrom("jwks")
-            .selectAll()
-            .execute();
+        let kid: string;
+        while (true) {
+            kid = AuthUtils.generateRandomString(8);
+            if (!jwks_in_db.some((v) => v.kid == kid)) break;
+        }
+
+        const jwk = await Jwk.create({
+            n: pub_jwk.n,
+            pri_key: pri_jwk,
+            cre_time: cre_time,
+            kid: kid,
+        }, { transaction: t });
     }
 
     /**
@@ -110,15 +107,19 @@ export class AuthUtils {
         let date = new Date();
         date.setDate(date.getDate() - 7 * 4);
         date.setHours(date.getHours() - 1);
-        return jaw_db
-            .selectFrom("jwks")
-            .selectAll()
-            .where("cre_time", ">", date)
-            .execute();
+        return Jwk.findAll({
+            attributes: ["n", "pri_key", "cre_time", "kid"],
+            where: {
+                cre_time: {
+                    [Op.gt]: date,
+                },
+            },
+        })
     }
 
     /**
      * 注意, private key在里面
+     * @throws db operation errors
      * @returns a random jwk
      */
     static async getRandomAvailableJwk() {
@@ -126,6 +127,9 @@ export class AuthUtils {
         return available_jwks[Math.round(Math.random() * (available_jwks.length - 1))];
     }
 
+    /**
+     * @throws db operation errors
+     */
     static async getJwt(username: string, scope: string[]) {
         let jwk = await AuthUtils.getRandomAvailableJwk();
         const private_key = await jose.importPKCS8(jwk.pri_key.replaceAll(/\\n/g, "\n"), "RS256");

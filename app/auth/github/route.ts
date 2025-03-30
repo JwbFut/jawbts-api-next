@@ -1,7 +1,8 @@
-import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
-import { sql } from "@vercel/postgres";
 import { userAgent } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -12,11 +13,19 @@ export async function GET(request: Request) {
 
     if (user_name === null) return ResponseUtils.missing("param: user_name");
 
-    let res = await jaw_db
-        .selectFrom("users")
-        .select(["id", "ref_tokens"])
-        .where("username", "=", user_name)
-        .executeTakeFirst();
+    let res;
+    try {
+        res = await User.findOne({
+            attributes: ["id", "ref_tokens"],
+            where: {
+                username: user_name
+            }
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
+
     if (!res) {
         return ResponseUtils.bad("User: not exists");
     }
@@ -46,11 +55,21 @@ export async function GET(request: Request) {
         otp_code: null
     });
 
-    await sql`
-        UPDATE users
-        SET ref_tokens = ${JSON.stringify(res.ref_tokens)}
-        WHERE id = ${res.id}
-    `;
+    try {
+        await sequelize.transaction(async (t) => {
+            await User.update({
+                ref_tokens: res.ref_tokens
+            }, {
+                where: {
+                    id: res.id
+                },
+                transaction: t
+            });
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     return ResponseUtils.successJson({
         url: 'https://github.com/login/oauth/authorize?'
