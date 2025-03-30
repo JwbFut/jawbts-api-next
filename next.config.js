@@ -20,7 +20,10 @@ const nextConfig = {
                 ],
             }
         ]
-    }
+    },
+    experimental: {
+        serverComponentsExternalPackages: ["sequelize"],
+    },
 }
 
 
