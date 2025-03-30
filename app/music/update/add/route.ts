@@ -1,7 +1,8 @@
-import { jaw_db, MusicDataType } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { MusicDataType, User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
-import { db } from "@vercel/postgres";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const music_data: MusicDataType[] = formData["music_data"];
     let cleaned_data: MusicDataType[] = [];
     music_data.forEach(data => {
-        if (!data.title ||!data.author ||!data.inner_id || !data.tags || !data.static_tags || data.likes === undefined) return;
+        if (!data.title || !data.author || !data.inner_id || !data.tags || !data.static_tags || data.likes === undefined) return;
         cleaned_data.push({
             title: data.title,
             author: data.author,
@@ -38,12 +39,18 @@ export async function POST(request: Request) {
 
     if (cleaned_data.length === 0) return ResponseUtils.bad("Request. No valid data.");
 
-    const musics = await jaw_db
-        .selectFrom("users")
-        .select("music_data")
-        .select("async_key")
-        .where("username", "=", res.username)
-        .executeTakeFirst();
+    let musics;
+    try {
+        musics = await User.findOne({
+            attributes: ["music_data"],
+            where: {
+                username: res.username
+            }
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     if (!musics) return ResponseUtils.bad("Username. User not found.");
 
@@ -59,10 +66,22 @@ export async function POST(request: Request) {
     let async_time = Date.now();
     musics.async_key.music_data = async_time;
 
-    let client = await db.connect();
-    let d = JSON.stringify(cleaned_data).replace(/'/g, "''");
-    if (d.includes("$")) return ResponseUtils.bad("Music. Invalid data.");
-    await client.query(`UPDATE users SET music_data = music_data || '${d}', async_key = '${JSON.stringify(musics.async_key)}' WHERE username = '${res.username.toString()}';`);
+    try {
+        await sequelize.transaction(async (t) => {
+            await User.update({
+                music_data: sequelize.fn("array_append", sequelize.col("music_data"), cleaned_data),
+                async_key: musics.async_key
+            }, {
+                where: {
+                    username: res.username
+                },
+                transaction: t
+            });
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
-    return ResponseUtils.successJson({async_time: async_time});
+    return ResponseUtils.successJson({ async_time: async_time });
 }

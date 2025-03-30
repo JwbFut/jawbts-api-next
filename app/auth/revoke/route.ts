@@ -1,7 +1,8 @@
-import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
-import { db, sql } from "@vercel/postgres";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,24 +17,44 @@ export async function GET(request: Request) {
     let desc = searchParams.get("desc_c");
     if (!desc) return ResponseUtils.missing("param desc_c.");
 
-    let res_db = await jaw_db
-        .selectFrom("users")
-        .select("ref_tokens")
-        .where("username", "=", res.username)
-        .executeTakeFirst();
+    let res_db;
+    try {
+        res_db = await User.findOne({
+            attributes: ["ref_tokens"],
+            where: {
+                username: res.username
+            }
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     if (!res_db) {
         return ResponseUtils.badToken("User not exists.");
     }
 
-    let k = res_db.ref_tokens.findIndex((token) => {
+    let k = res_db.ref_tokens.find((token) => {
         return token.desc_c == desc;
     });
     // 你要吊销, 但是这个token已经没了, 那么也算成功了
-    if (k < 0) return ResponseUtils.success();
+    if (k == undefined) return ResponseUtils.success();
 
-    let client = await db.connect();
-    await client.query(`UPDATE users SET ref_tokens = ref_tokens - ${k} WHERE username = '${res.username.toString()}';`);
+    try {
+        await sequelize.transaction(async (t) => {
+            await User.update({
+                ref_tokens: sequelize.fn("array_remove", sequelize.col("ref_tokens"), k)
+            }, {
+                where: {
+                    username: res.username
+                },
+                transaction: t
+            });
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     return ResponseUtils.success();
 }

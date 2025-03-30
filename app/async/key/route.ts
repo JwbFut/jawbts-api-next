@@ -1,5 +1,6 @@
-import { jaw_db, MusicDataType } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import { User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -11,13 +12,18 @@ export async function GET(request: Request) {
     }
 
     if (!res.username) return ResponseUtils.badToken("No aud claim.");
-    const key = await jaw_db
-        .selectFrom("users")
-        .select("async_key")
-        .where("username", "=", res.username)
-        .executeTakeFirst();
+    let key;
+    try {
+        key = await User.findOne({
+            attributes: ["async_key"],
+            where: { username: res.username },
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     if (!key) return ResponseUtils.bad("Username. User not found.");
 
-    return ResponseUtils.successJson({async_key: key.async_key});
+    return ResponseUtils.successJson({ async_key: key.async_key });
 }

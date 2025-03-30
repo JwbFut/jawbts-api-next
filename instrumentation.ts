@@ -1,6 +1,8 @@
-import schedule from "node-schedule";
-import { jaw_db } from "@/app/Db";
-import { AuthUtils } from "./components/AuthUtils";
+import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { Op, Transaction } from "sequelize";
+import { Jwk } from "@/components/database/dbTypes";
+import { ErrorUtils } from "./components/ErrorUtils";
 
 export async function register() {
     await on_init();
@@ -17,7 +19,7 @@ export async function register() {
 }
 
 export async function do_every_monday() {
-    update_jwks();
+    return update_jwks();
 }
 
 async function on_init() {
@@ -33,49 +35,60 @@ async function update_jwks() {
     // expire_date.setMinutes(expire_date.getMinutes() - 1);
     // expire_date.setSeconds(expire_date.getSeconds() + 30);
 
-    console.log("call update_jwks", expire_date);
+    // console.log("call update_jwks", expire_date);
 
-    await jaw_db
-        .deleteFrom("jwks")
-        .where("cre_time", "<", expire_date)
-        .execute();
-    let res = await jaw_db
-        .selectFrom("jwks")
-        .select("cre_time")
-        .select("kid")
-        .execute();
+    try {
+        await sequelize.transaction({
+            isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE
+        }, async (t) => {
+            await Jwk.destroy({
+                where: {
+                    cre_time: {
+                        [Op.lt]: expire_date
+                    }
+                }
+            });
 
-    let need_remove = false;
-    res.forEach((item) => {
-        res.forEach(async (item2) => {
-            // 小于6天? 都给我死!
-            if (item.kid == item2.kid && item.cre_time.getTime() - item2.cre_time.getTime() < -6 * 24 * 60 * 60 * 1000) {
-                need_remove = true;
+            let jwks_in_db = await Jwk.findAll({
+                attributes: ["cre_time", "kid"]
+            });
+
+            let need_remove = false;
+            jwks_in_db.forEach((item) => {
+                jwks_in_db.forEach(async (item2) => {
+                    // 小于6天? 都给我死!
+                    if (item.kid == item2.kid && item.cre_time.getTime() - item2.cre_time.getTime() < -6 * 24 * 60 * 60 * 1000) {
+                        need_remove = true;
+                    }
+                });
+            });
+
+            if (need_remove) {
+                await Jwk.destroy();
+                console.error("!!!RM JWKS DUE TO DUPLICATE DETECTED!!!");
+            }
+
+            if (jwks_in_db.length >= 8 && !need_remove) {
+                return;
+            }
+            let need_jwks = 8 - jwks_in_db.length;
+            if (need_remove) need_jwks = 8;
+
+            let cre_date = new Date();
+            for (let i = 0; i < need_jwks; i++) {
+                // 面向对象编程算是给我玩明白了
+                // 这是多线程, 对象只有一个, 改了就都改了
+                await AuthUtils.generateJwk(new Date(cre_date), t);
+                cre_date.setDate(cre_date.getDate() - 7);
+
+                // test, rm in production
+                // cre_date.setMinutes(cre_date.getMinutes() - 1);
             }
         });
-    });
-
-    if (need_remove) {
-        await jaw_db
-            .deleteFrom("jwks")
-            .execute();
-        console.error("!!!RM JWKS DUE TO DUPLICATE DETECTED!!!");
+    } catch (e) {
+        console.error("!!!update_jwks ERROR!!!");
+        ErrorUtils.log(e as Error);
+        return false;
     }
-
-    if (res.length >= 8 && !need_remove) {
-        return;
-    }
-    let need_jwks = 8 - res.length;
-    if (need_remove) need_jwks = 8;
-
-    let cre_date = new Date();
-    for (let i = 0; i < need_jwks; i++) {
-        // 面向对象编程算是给我玩明白了
-        // 这是多线程, 对象只有一个, 改了就都改了
-        await AuthUtils.generateJwk(new Date(cre_date));
-        cre_date.setDate(cre_date.getDate() - 7);
-
-        // test, rm in production
-        // cre_date.setMinutes(cre_date.getMinutes() - 1);
-    }
+    return true;
 }

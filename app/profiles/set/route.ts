@@ -1,5 +1,6 @@
-import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import sequelize from "@/components/database/db";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -18,30 +19,46 @@ export async function POST(request: Request) {
     } catch (e) {
         return ResponseUtils.bad("Request. Invalid JSON.")
     }
-    
+
     let description = formData["description"];
     let avatar_url = formData["avatar_url"];
 
     if (description) {
         description = description.toString();
-        await jaw_db
-            .updateTable("users")
-            .set({
-                description: description
-            })
-            .where("username", "=", res.username)
-            .execute()
+        try {
+            await sequelize.transaction(async (t) => {
+                await sequelize.models.users.update({
+                    description: description
+                }, {
+                    where: {
+                        username: res.username
+                    },
+                    transaction: t
+                });
+            });
+        } catch (e) {
+            ErrorUtils.log(e as Error);
+            return ResponseUtils.serverError("Database Error");
+        }
     }
 
     if (avatar_url) {
         avatar_url = avatar_url.toString();
-        await jaw_db
-            .updateTable("users")
-            .set({
-                avatar_url: avatar_url
-            })
-            .where("username", "=", res.username)
-            .execute()
+        try {
+            await sequelize.transaction(async (t) => {
+                await sequelize.models.users.update({
+                    avatar_url: avatar_url
+                }, {
+                    where: {
+                        username: res.username
+                    },
+                    transaction: t
+                });
+            });
+        } catch (e) {
+            ErrorUtils.log(e as Error);
+            return ResponseUtils.serverError("Database Error");
+        }
     }
 
     return ResponseUtils.success();

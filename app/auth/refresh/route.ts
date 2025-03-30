@@ -1,5 +1,6 @@
-import { jaw_db } from "@/app/Db";
 import { AuthUtils } from "@/components/AuthUtils";
+import { User } from "@/components/database/dbTypes";
+import { ErrorUtils } from "@/components/ErrorUtils";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -11,11 +12,16 @@ export async function GET(request: Request) {
 
     if (!refresh_token || !username) return ResponseUtils.missing("params: ref_token / user_name");
 
-    const res = await jaw_db
-        .selectFrom("users")
-        .select("ref_tokens")
-        .where("username", "=", username)
-        .executeTakeFirst();
+    let res;
+    try {
+        res = await User.findOne({
+            attributes: ["ref_tokens"],
+            where: { username: username }
+        });
+    } catch (e) {
+        ErrorUtils.log(e as Error);
+        return ResponseUtils.serverError("Database Error");
+    }
 
     if (!res) return ResponseUtils.bad("username.");
 
@@ -33,5 +39,5 @@ export async function GET(request: Request) {
 
     if (real_ref.exp_time < new Date()) return ResponseUtils.bad("Refresh token. Expired.");
 
-    return ResponseUtils.successJson({jwt: await AuthUtils.getJwt(username, real_ref.scope ? real_ref.scope : []), username: username});
+    return ResponseUtils.successJson({ jwt: await AuthUtils.getJwt(username, real_ref.scope ? real_ref.scope : []), username: username });
 }

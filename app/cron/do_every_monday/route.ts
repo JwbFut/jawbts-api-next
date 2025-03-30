@@ -8,7 +8,9 @@ export async function GET(request: Request) {
         return ResponseUtils.needLogin();
     }
 
-    do_every_monday();
-
-    return ResponseUtils.success();
+    if (await do_every_monday()) {
+        return ResponseUtils.success();
+    } else {
+        return ResponseUtils.serverError("Failed to update JWKS");
+    }
 }
