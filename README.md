@@ -13,7 +13,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 ## 感谢
 [vercel](https://vercel.com/) 提供免费服务托管  
 [jose](https://www.npmjs.com/package/jose) 提供jwt加密解密库  
-[kysely](https://www.npmjs.com/package/kysely) 提供ORM库  
+[kysely](https://www.npmjs.com/package/kysely) 曾经提供ORM库  
+[sequelize](https://www.npmjs.com/package/sequelize) 提供ORM库  
 [react](https://reactjs.org/) [nextjs](https://nextjs.org/) 提供的框架  
 感谢其他基础设施建造维护者  
 
