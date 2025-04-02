@@ -17,53 +17,60 @@ export async function GET(request: Request) {
     let desc = searchParams.get("desc_c");
     if (!desc) return ResponseUtils.missing("param desc_c.");
 
-    const t = await sequelize.transaction();
 
-    let res_db;
+    let t;
     try {
-        res_db = await User.findOne({
-            attributes: ["ref_tokens"],
-            where: {
-                username: res.username
-            },
-            lock: t.LOCK.UPDATE,
-            transaction: t
+        t = await sequelize.transaction();
+
+        let res_db;
+        try {
+            res_db = await User.findOne({
+                attributes: ["ref_tokens"],
+                where: {
+                    username: res.username
+                },
+                lock: t.LOCK.UPDATE,
+                transaction: t
+            });
+        } catch (e) {
+            ErrorUtils.log(e as Error);
+            await t.rollback();
+            return ResponseUtils.serverError("Database Error");
+        }
+
+        if (!res_db) {
+            await t.rollback();
+            return ResponseUtils.badToken("User not exists.");
+        }
+
+        let k = res_db.ref_tokens.findIndex((token) => {
+            return token.desc_c == desc;
         });
-    } catch (e) {
-        ErrorUtils.log(e as Error);
-        t.rollback();
-        return ResponseUtils.serverError("Database Error");
-    }
+        // 你要吊销, 但是这个token已经没了, 那么也算成功了
+        if (k == -1) {
+            await t.commit();
+            return ResponseUtils.success();
+        }
 
-    if (!res_db) {
-        t.rollback();
-        return ResponseUtils.badToken("User not exists.");
-    }
+        try {
+            await User.update({
+                ref_tokens: sequelize.literal(`ref_tokens #- '{${k}}'`)
+            }, {
+                where: {
+                    username: res.username
+                },
+                transaction: t
+            });
+            await t.commit();
+        } catch (e) {
+            ErrorUtils.log(e as Error);
+            await t.rollback();
+            return ResponseUtils.serverError("Database Error");
+        }
 
-    let k = res_db.ref_tokens.findIndex((token) => {
-        return token.desc_c == desc;
-    });
-    // 你要吊销, 但是这个token已经没了, 那么也算成功了
-    if (k == -1) {
-        t.commit();
         return ResponseUtils.success();
-    }
-
-    try {
-        await User.update({
-            ref_tokens: sequelize.literal(`ref_tokens #- '{${k}}'`)
-        }, {
-            where: {
-                username: res.username
-            },
-            transaction: t
-        });
-        t.commit();
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        t.rollback();
-        return ResponseUtils.serverError("Database Error");
+        if (t) await t.rollback();
+        throw e;
     }
-
-    return ResponseUtils.success();
 }
