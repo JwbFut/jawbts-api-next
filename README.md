@@ -16,6 +16,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 [kysely](https://www.npmjs.com/package/kysely) 曾经提供ORM库  
 [sequelize](https://www.npmjs.com/package/sequelize) 提供ORM库  
 [react](https://reactjs.org/) [nextjs](https://nextjs.org/) 提供的框架  
+[resend](https://resend.com/) 提供邮件服务
 感谢其他基础设施建造维护者  
 
 ## Getting Started
@@ -57,6 +58,14 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 参见[基于Squelize的SQL初始化脚本仓库](https://github.com/JwbFut/jawbts-api-next-db/)
 ### 用户
 ```sql
-INSERT INTO users (id, username, avatar_url, description, ref_tokens, music_data) VALUES (78122384,'winsrewu','https://avatars.githubusercontent.com/u/78122384?v=4','','[]', '[]');
+INSERT INTO users (id, username, avatar_url, description, ref_tokens, music_data, async_key) VALUES (78122384,'winsrewu','https://avatars.githubusercontent.com/u/78122384?v=4','','[]', '[]', '{"music_data":"0"}');
 ```
 注: 为了安全原因, avatar_url只支 https://avatars.githubusercontent.com/u/...  当然你用dataurl也不是不行  
+
+### 项目初始化
+第一次开机时, 请先运行以下命令初始化jwks, 其中123替换为你的CRON_SECRET (记得配置相关cron逻辑!):
+```bash
+curl "http://127.0.0.1:3000/cron/do_every_monday" -H "Authorization: Bearer 123"
+```
+有一些其他的问题, 因为instrumentation有一些问题, 不能在里面调用数据库相关逻辑(也可能是我的问题)
+但是cron逻辑还是可以的, 所以建议你自己创建一个, 然后加个库配置一下. 
