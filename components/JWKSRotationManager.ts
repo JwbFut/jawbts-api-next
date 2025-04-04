@@ -1,12 +1,10 @@
-import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { Op, Transaction } from "sequelize";
 import { Jwk } from "@/components/database/dbTypes";
-import { ErrorUtils } from "./components/ErrorUtils";
+import { AuthUtils } from "./AuthUtils";
+import { ErrorUtils } from "./ErrorUtils";
 
-export async function register() {
-    await on_init();
-
+export async function do_every_monday() {
     // 每周一执行 这个不用了, 因为改成vercel的定时任务了
     // schedule.scheduleJob('0 0 0 * * 1', async () => {
     //     await do_every_monday();
@@ -16,14 +14,8 @@ export async function register() {
     // schedule.scheduleJob('0 */1 * * * ?', async () => {
     //     await do_every_monday();
     // });
-}
 
-export async function do_every_monday() {
     return update_jwks();
-}
-
-async function on_init() {
-    update_jwks();
 }
 
 async function update_jwks() {
