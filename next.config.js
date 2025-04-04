@@ -21,11 +21,7 @@ const nextConfig = {
             }
         ]
     },
-    experimental: {
-        serverComponentsExternalPackages: ["sequelize"],
-    },
+    serverExternalPackages: ["sequelize"],
 }
-
-
 
 module.exports = nextConfig
