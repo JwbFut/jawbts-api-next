@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     let musics;
     try {
         musics = await User.findOne({
-            attributes: ["music_data"],
+            attributes: ["music_data", "async_key"],
             where: {
                 username: res.username
             }
