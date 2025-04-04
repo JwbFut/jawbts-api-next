@@ -1,5 +1,5 @@
 import { ResponseUtils } from "@/components/ResponseUtils";
-import { do_every_monday } from "@/instrumentation";
+import { do_every_monday } from "@/components/JWKSRotationManager";
 
 export const dynamic = 'force-dynamic';
 
