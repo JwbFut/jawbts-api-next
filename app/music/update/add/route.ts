@@ -66,10 +66,12 @@ export async function POST(request: Request) {
     let async_time = Date.now();
     musics.async_key.music_data = async_time;
 
+    console.log(cleaned_data)
+
     try {
         await sequelize.transaction(async (t) => {
             await User.update({
-                music_data: sequelize.fn("array_append", sequelize.col("music_data"), cleaned_data),
+                music_data: sequelize.fn("jsonb_insert", sequelize.col("music_data"), "{-1}", JSON.stringify(cleaned_data)),
                 async_key: musics.async_key
             }, {
                 where: {
