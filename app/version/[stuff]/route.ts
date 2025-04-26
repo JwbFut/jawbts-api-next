@@ -22,9 +22,9 @@ const stuffs: { [key: string]: any } = {
 
 export async function GET(
     request: Request,
-    { params }: { params: { stuff: string } }
+    { params }: { params: Promise<{ stuff: string }> }
 ) {
-    const stuff = params.stuff;
+    const stuff = (await params).stuff;
     if (stuffs[stuff] == undefined) {
         return ResponseUtils.notFound(stuff);
     }
