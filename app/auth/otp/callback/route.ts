@@ -76,7 +76,7 @@ export async function GET(request: Request) {
 
     let jwt;
     try {
-        jwt = await AuthUtils.getJwt(res.username, ["website", "api", "otp"]);
+        jwt = await AuthUtils.getJwt(username, ["website", "api"]);
     } catch (e) {
         ErrorUtils.log(e as Error);
         return ResponseUtils.serverError("Database Error");
