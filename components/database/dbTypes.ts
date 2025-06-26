@@ -23,6 +23,13 @@ export interface AsyncKeyType {
     music_data: number;
 }
 
+export interface EmailDataType {
+    email: string | null;
+    verified: boolean;
+    verify_code: string;
+    verify_exp_time: Date | string;
+}
+
 export class User extends Model {
     declare id: number;
     declare username: string;
@@ -31,6 +38,7 @@ export class User extends Model {
     declare ref_tokens: RefTokenType[];
     declare music_data: MusicDataType[];
     declare async_key: AsyncKeyType;
+    declare email: EmailDataType;
 }
 
 User.init({
@@ -64,6 +72,10 @@ User.init({
         type: DataTypes.JSONB,
         allowNull: false,
     },
+    email: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+    }
 }, {
     sequelize,
     modelName: 'users',
