@@ -1,7 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +13,9 @@ export async function GET(request: Request) {
         return res;
     }
 
-    if (!res.username) return ResponseUtils.badToken("No aud claim.");
-    let desc = searchParams.get("desc_c");
-    if (!desc) return ResponseUtils.missing("param desc_c.");
-
+    let desc_c = searchParams.get("desc_c");
+    const r = ErrorHandler.checkParameter({ desc_c: desc_c });
+    if (r) return r;
 
     let t;
     try {
@@ -33,18 +32,17 @@ export async function GET(request: Request) {
                 transaction: t
             });
         } catch (e) {
-            ErrorUtils.log(e as Error);
             await t.rollback();
-            return ResponseUtils.serverError("Database Error");
+            return ErrorHandler.databaseError();
         }
 
         if (!res_db) {
             await t.rollback();
-            return ResponseUtils.badToken("User not exists.");
+            return ErrorHandler.userNotExists();
         }
 
         let k = res_db.ref_tokens.findIndex((token) => {
-            return token.desc_c == desc;
+            return token.desc_c == desc_c;
         });
         // 你要吊销, 但是这个token已经没了, 那么也算成功了
         if (k == -1) {
@@ -63,14 +61,13 @@ export async function GET(request: Request) {
             });
             await t.commit();
         } catch (e) {
-            ErrorUtils.log(e as Error);
             await t.rollback();
-            return ResponseUtils.serverError("Database Error");
+            return ErrorHandler.databaseError();
         }
 
         return ResponseUtils.success();
     } catch (e) {
         if (t) await t.rollback();
-        throw e;
+        return ErrorHandler.unknownError();
     }
 }

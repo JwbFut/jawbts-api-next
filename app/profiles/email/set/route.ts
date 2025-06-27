@@ -1,5 +1,6 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import { EmailDataType, User } from "@/components/database/dbTypes";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { Resend } from "resend";
 
@@ -16,9 +17,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email");
 
-    if (!email) {
-        return ResponseUtils.missing("email");
-    }
+    const r = ErrorHandler.checkParameter({ email: email });
+    if (r) return r;
 
     const code = AuthUtils.generateRandomString(64);
 
@@ -36,18 +36,18 @@ export async function GET(request: Request) {
     try {
         await resend.emails.send({
             from: process.env.RESEND_EMAIL_SENDER,
-            to: email,
+            to: email!,
             subject: "Verify your email",
             text: `Please visit ${process.env.WEBSITE_URL}/nav/profiles/email/verify?code=${code} to verify your email.`
         });
     } catch (e) {
-        return ResponseUtils.serverError("Failed to send email", e);
+        return ErrorHandler.failedToSendEmail();
     }
 
     try {
         await User.update({ email: newEmail }, { where: { username: res.username } });
         return ResponseUtils.success();
     } catch (e) {
-        return ResponseUtils.databaseError(e);
+        return ErrorHandler.databaseError();
     }
 }

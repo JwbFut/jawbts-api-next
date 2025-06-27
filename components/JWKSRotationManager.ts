@@ -2,7 +2,6 @@ import sequelize from "@/components/database/db";
 import { Op, Transaction } from "sequelize";
 import { Jwk } from "@/components/database/dbTypes";
 import { AuthUtils } from "./AuthUtils";
-import { ErrorUtils } from "./ErrorUtils";
 
 export async function do_every_monday() {
     // 每周一执行 这个不用了, 因为改成vercel的定时任务了
@@ -20,6 +19,7 @@ export async function do_every_monday() {
 
 async function update_jwks() {
     let expire_date = new Date();
+    let fail_flag = false;
     expire_date.setDate(expire_date.getDate() - 7 * 8);
     expire_date.setHours(expire_date.getHours() + 1);
 
@@ -57,6 +57,7 @@ async function update_jwks() {
 
             if (need_remove) {
                 await Jwk.destroy();
+                fail_flag = true;
                 console.error("!!!RM JWKS DUE TO DUPLICATE DETECTED!!!");
             }
 
@@ -78,9 +79,7 @@ async function update_jwks() {
             }
         });
     } catch (e) {
-        console.error("!!!update_jwks ERROR!!!");
-        ErrorUtils.log(e as Error);
         return false;
     }
-    return true;
+    return true && !fail_flag;
 }

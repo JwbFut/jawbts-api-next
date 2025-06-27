@@ -1,6 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { User } from "@/components/database/dbTypes";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +15,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const verify_code = searchParams.get("verify_code");
 
-    if (!verify_code) {
-        return ResponseUtils.missing("verify_code");
-    }
+    const r = ErrorHandler.checkParameter({ verify_code: verify_code });
+    if (r) return r;
 
     let t;
     try {
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
         if (!user) {
             await t.rollback();
-            return ResponseUtils.userNotExisis();
+            return ErrorHandler.userNotExists();
         }
 
         if (user.email.verified) {
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
         if (user.email.verify_code === verify_code) {
             if (Date.now() > new Date(user.email.verify_exp_time).getTime()) {
                 await t.rollback();
-                return ResponseUtils.bad("verify_code. Expired.");
+                return ErrorHandler.verifyCodeExpired();
             }
 
             user.email.verified = true;
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         }
 
         await t.rollback();
-        return ResponseUtils.wrong("verify_code");
+        return ErrorHandler.verifyCodeInvalid();
     } catch (e) {
         if (t) await t.rollback();
         throw e;

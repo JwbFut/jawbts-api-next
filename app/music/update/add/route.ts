@@ -1,7 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { MusicDataType, User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -12,8 +12,6 @@ export async function POST(request: Request) {
         return res;
     }
 
-    if (!res.username) return ResponseUtils.badToken("No aud claim.");
-
     let formData;
     try {
         formData = await request.json();
@@ -21,7 +19,7 @@ export async function POST(request: Request) {
             throw new Error();
         }
     } catch (e) {
-        return ResponseUtils.bad("Request. Invalid JSON.")
+        return ErrorHandler.invalidFormData();
     }
     const music_data: MusicDataType[] = formData["music_data"];
     let cleaned_data: MusicDataType[] = [];
@@ -37,7 +35,7 @@ export async function POST(request: Request) {
         });
     });
 
-    if (cleaned_data.length === 0) return ResponseUtils.bad("Request. No valid data.");
+    if (cleaned_data.length === 0) return ErrorHandler.invalidFormData();
 
     let musics;
     try {
@@ -48,11 +46,10 @@ export async function POST(request: Request) {
             }
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
-    if (!musics) return ResponseUtils.bad("Username. User not found.");
+    if (!musics) return ErrorHandler.userNotExists();
 
     cleaned_data = cleaned_data.filter(data => {
         for (let i = 0; i < musics.music_data.length; i++) {
@@ -79,8 +76,7 @@ export async function POST(request: Request) {
             });
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     return ResponseUtils.successJson({ async_time: async_time });

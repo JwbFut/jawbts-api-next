@@ -1,7 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,6 @@ export async function GET(request: Request) {
         return res_lgc;
     }
 
-    if (!res_lgc.username) return ResponseUtils.badToken("No aud claim.");
     const user_name = res_lgc.username;
 
     let res;
@@ -22,12 +21,11 @@ export async function GET(request: Request) {
             where: { username: user_name }
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     if (!res) {
-        return ResponseUtils.bad("User: not exists");
+        return ErrorHandler.userNotExists();
     }
 
     res.ref_tokens = AuthUtils.removeExpireRefTokensFrom(res.ref_tokens);
@@ -36,7 +34,7 @@ export async function GET(request: Request) {
         if (!res.ref_tokens[i].ref_token) counter++;
     }
     if (counter > 3) {
-        return ResponseUtils.bad("Request. Too many login requests. Please wait a while.")
+        return ErrorHandler.rateLimitExceeded();
     }
 
 
@@ -66,8 +64,7 @@ export async function GET(request: Request) {
             });
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     return ResponseUtils.successJson({

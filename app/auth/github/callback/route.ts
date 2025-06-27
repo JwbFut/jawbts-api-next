@@ -1,7 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
-    if (!code || !state) return ResponseUtils.missing("params: code / state");
+    const r = ErrorHandler.checkParameter({ code: code, state: state });
+    if (r) return r;
 
     let data = null;
     try {
@@ -25,22 +26,17 @@ export async function GET(request: Request) {
                 "Accept": "application/json"
             }
         });
-        data = await data.json();
-    } catch (e) {
-        ErrorUtils.log(e as Error);
-    }
 
-    if (data == null) {
-        return ResponseUtils.serverError("Server Network Error");
+        data = await data.json();
+
+        if (data == null) throw new Error("data is null");
+    } catch (e) {
+        return ErrorHandler.dataFetchError();
     }
 
     const access_token = data.access_token;
-    if (access_token == null) {
-        return ResponseUtils.badToken("(Maybe Expired)");
-    }
-
-    if (data.token_type != "bearer") {
-        return ResponseUtils.badToken("Wrong Token Type");
+    if (access_token == null || data.token_type != "bearer") {
+        return ErrorHandler.invalidToken();
     }
 
     data = null;
@@ -53,17 +49,13 @@ export async function GET(request: Request) {
                 "Authorization": "Bearer " + access_token
             }
         });
+
         data = await data.json();
+
+        if (data == null) throw new Error("data is null");
+        if (data.id == null) throw new Error("data.id is null");
     } catch (e) {
-        ErrorUtils.log(e as Error);
-    }
-
-    if (data == null) {
-        return ResponseUtils.serverError("Server Network Error");
-    }
-
-    if (data.id == null) {
-        return ResponseUtils.serverError("data.id Does Not Exist")
+        return ErrorHandler.dataFetchError();
     }
 
     let res;
@@ -75,11 +67,10 @@ export async function GET(request: Request) {
             }
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
-    if (!res) return ResponseUtils.bad("Account: Account Not Exists");
+    if (!res) return ErrorHandler.userNotExists();
 
     res.ref_tokens = AuthUtils.removeExpireRefTokensFrom(res.ref_tokens);
 
@@ -89,7 +80,7 @@ export async function GET(request: Request) {
             link = k;
         }
     })
-    if (link == null) return ResponseUtils.bad("State: State Not Exists (maybe expired)");
+    if (link == null) return ErrorHandler.stateNotExists();
 
     const ref_token = AuthUtils.generateToken();
     const expire_date = new Date();
@@ -110,16 +101,14 @@ export async function GET(request: Request) {
             });
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     let jwt;
     try {
         jwt = await AuthUtils.getJwt(res.username, ["website", "api", "otp"]);
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     return ResponseUtils.successJson({ jwt: jwt, ref_token: ref_token, username: res.username, client_id: res.ref_tokens[link].desc_c });
