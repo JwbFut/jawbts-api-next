@@ -1,7 +1,7 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
 import { User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { userAgent } from "next/server";
 
@@ -13,7 +13,8 @@ export async function GET(request: Request) {
     const state = searchParams.get('state');
     const username = searchParams.get('username');
 
-    if (!code || !state || !username) return ResponseUtils.missing("params: code / state / username");
+    const r = ErrorHandler.checkParameter({ code: code, state: state, username: username });
+    if (r) return r;
 
     let res;
     try {
@@ -22,11 +23,10 @@ export async function GET(request: Request) {
             where: { username: username }
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
-    if (!res) return ResponseUtils.bad("Account: Account Not Exists");
+    if (!res) return ErrorHandler.userNotExists();
 
     res.ref_tokens = AuthUtils.removeExpireRefTokensFrom(res.ref_tokens);
 
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
             link = k;
         }
     })
-    if (link == null) return ResponseUtils.bad("State: State Not Exists (maybe expired)");
+    if (link == null) return ErrorHandler.stateNotExists();
     res.ref_tokens = res.ref_tokens.filter((v) => {
         return v.state_c != state;
     });
@@ -70,16 +70,14 @@ export async function GET(request: Request) {
             });
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     let jwt;
     try {
-        jwt = await AuthUtils.getJwt(username, ["website", "api"]);
+        jwt = await AuthUtils.getJwt(username!, ["website", "api"]);
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     return ResponseUtils.successJson({ jwt: jwt, ref_token: ref_token, username: username, client_id: desc_c });

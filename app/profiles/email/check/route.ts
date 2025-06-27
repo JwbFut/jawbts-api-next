@@ -1,5 +1,6 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import { EmailDataType, User } from "@/components/database/dbTypes";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { Resend } from "resend";
 
@@ -15,10 +16,10 @@ export async function GET(request: Request) {
 
     try {
         const user = await User.findOne({ where: { username: res.username }, attributes: ["email"] });
-        if (!user) return ResponseUtils.userNotExisis();
+        if (!user) return ErrorHandler.userNotExists();
         if (!user.email) ResponseUtils.successJson({ verified: false });
         return ResponseUtils.successJson({ verified: user.email.verified });
     } catch (e) {
-        return ResponseUtils.databaseError(e);
+        return ErrorHandler.userNotExists();
     }
 }

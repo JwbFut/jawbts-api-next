@@ -1,6 +1,5 @@
 import { Jwk } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
-import { ResponseUtils } from "@/components/ResponseUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +10,7 @@ export async function GET(request: Request) {
             attributes: ["n", "kid"]
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
     let res_full: { kty: string, use: string, kid: string, n: string, e: string }[] = [];

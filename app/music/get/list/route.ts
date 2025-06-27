@@ -1,6 +1,6 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import { User } from "@/components/database/dbTypes";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,6 @@ export async function GET(request: Request) {
         return res;
     }
 
-    if (!res.username) return ResponseUtils.badToken("No aud claim.");
-
     let musics;
     try {
         musics = await User.findOne({
@@ -20,11 +18,10 @@ export async function GET(request: Request) {
             where: { username: res.username }
         });
     } catch (e) {
-        ErrorUtils.log(e as Error);
-        return ResponseUtils.serverError("Database Error");
+        return ErrorHandler.databaseError();
     }
 
-    if (!musics) return ResponseUtils.bad("Username. User not found.");
+    if (!musics) return ErrorHandler.userNotExists();
 
     return ResponseUtils.successJson(musics.music_data);
 }

@@ -1,6 +1,6 @@
 import { AuthUtils } from "@/components/AuthUtils";
 import sequelize from "@/components/database/db";
-import { ErrorUtils } from "@/components/ErrorUtils";
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 
 export const dynamic = 'force-dynamic';
@@ -11,13 +11,11 @@ export async function POST(request: Request) {
         return res;
     }
 
-    if (!res.username) return ResponseUtils.badToken("No aud claim.");
-
     let formData;
     try {
         formData = await request.json();
     } catch (e) {
-        return ResponseUtils.bad("Request. Invalid JSON.")
+        return ErrorHandler.invalidFormData();
     }
 
     let description = formData["description"];
@@ -37,8 +35,7 @@ export async function POST(request: Request) {
                 });
             });
         } catch (e) {
-            ErrorUtils.log(e as Error);
-            return ResponseUtils.serverError("Database Error");
+            return ErrorHandler.databaseError();
         }
     }
 
@@ -56,8 +53,7 @@ export async function POST(request: Request) {
                 });
             });
         } catch (e) {
-            ErrorUtils.log(e as Error);
-            return ResponseUtils.serverError("Database Error");
+            return ErrorHandler.databaseError();
         }
     }
 

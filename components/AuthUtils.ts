@@ -1,9 +1,7 @@
-import { ResponseUtils } from "./ResponseUtils";
 import * as jose from "jose"
 import { Jwk, RefTokenType } from "@/components/database/dbTypes";
-import sequelize from "./database/db";
 import { Op, Transaction } from "sequelize";
-import { ErrorUtils } from "./ErrorUtils";
+import { ErrorHandler } from "./ErrorHandler";
 
 export const jwks = jose.createRemoteJWKSet(new URL(process.env.ORIGIN_URL + "/auth/keys"));
 
@@ -37,10 +35,17 @@ export class AuthUtils {
 
     static async checkLogin(request: Request, additional_scope: string[] = []) {
         const auth = request.headers.get("Authorization");
-        if (!auth) return ResponseUtils.needLogin();
-        if (!auth.startsWith("Bearer ")) return ResponseUtils.badToken("Unsupported Token");
+        if (!auth) return ErrorHandler.needLogin();
+        if (!auth.startsWith("Bearer ")) return ErrorHandler.invalidToken();
 
-        return await this.checkToken(auth.substring(7), additional_scope);
+        const username_raw = await this.checkToken(auth.substring(7), additional_scope);
+        if (username_raw instanceof Response) return username_raw;
+        const username = username_raw.username;
+
+        if (!username) return ErrorHandler.invalidToken();
+        if (typeof username === "string") return { username: username };
+        if (Array.isArray(username) && username.length == 1) return { username: username[0] };
+        return ErrorHandler.invalidToken();
     }
 
     static async checkToken(token: string, additional_scope: string[] = []) {
@@ -48,17 +53,17 @@ export class AuthUtils {
             const { payload } = await jose.jwtVerify(token, jwks, {
                 issuer: 'jawbts-api'
             });
-            if (!payload.scope) return ResponseUtils.badToken("Bad Token");
-            if (!(payload.scope instanceof Array)) return ResponseUtils.badToken("Bad Token");
+            if (!payload.scope) return ErrorHandler.invalidToken();
+            if (!(payload.scope instanceof Array)) return ErrorHandler.invalidToken();
             for (const scope of additional_scope) {
-                if (!payload.scope.includes(scope)) return ResponseUtils.badToken("Permission Denied");
+                if (!payload.scope.includes(scope)) return ErrorHandler.invalidToken();
             }
-            return payload.scope.includes("api") ? { username: payload.aud } : ResponseUtils.badToken("Permission Denied");
+            return payload.scope.includes("api") ? { username: payload.aud } : ErrorHandler.invalidToken();
         } catch (err) {
             if ((err as Error).message === '"exp" claim timestamp check failed') {
-                return ResponseUtils.badToken("Token Expired");
+                return ErrorHandler.tokenExpired();
             }
-            return ResponseUtils.badToken("Bad Token");
+            return ErrorHandler.invalidToken();
         }
     }
 
@@ -81,8 +86,7 @@ export class AuthUtils {
                 attributes: ["kid"],
             });
         } catch (e) {
-            ErrorUtils.log(e as Error);
-            return ResponseUtils.serverError("Database Error");
+            return ErrorHandler.databaseError();
         }
 
         let kid: string;
