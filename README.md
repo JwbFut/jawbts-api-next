@@ -16,7 +16,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 [kysely](https://www.npmjs.com/package/kysely) 曾经提供ORM库  
 [sequelize](https://www.npmjs.com/package/sequelize) 提供ORM库  
 [react](https://reactjs.org/) [nextjs](https://nextjs.org/) 提供的框架  
-[resend](https://resend.com/) 提供邮件服务
+[resend](https://resend.com/) 提供邮件服务  
+[node](https://nodejs.org/zh-cn/) 提供运行环境  
 感谢其他基础设施建造维护者  
 
 ## Getting Started
