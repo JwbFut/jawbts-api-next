@@ -5,7 +5,7 @@
 
 注意, 它需要联动前端, 也就是[Jawbts Website Next](https://github.com/winsrewu/jawbts-website-next/).  
 请参照.env.example文件配置环境变量.  
-关于api和api-domestic的区别, 因为这个服务我部署在vercel上面, 访问国内网站慢, 所以要第二个api, 也就是api-domestic, 也就是这个仓库的domestic分支. 它其实就是main的阉割版.  
+关于api和api-domestic的区别, 因为这个服务我部署在vercel上面, 访问国内网站慢, 所以要第二个api, 也就是api-domestic, 在另一个仓库. 它其实就是main的阉割版.  
 注意, origin指的是你这个服务部署的url, 也就是你访问这个网站的url.  
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
