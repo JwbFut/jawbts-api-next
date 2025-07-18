@@ -30,6 +30,12 @@ export interface EmailDataType {
     verify_exp_time: Date | string;
 }
 
+export interface IpTrackDataType {
+    ip: string;
+    last_visit: Date | string;
+    trusted: boolean;
+}
+
 export class User extends Model {
     declare id: number;
     declare username: string;
@@ -39,6 +45,7 @@ export class User extends Model {
     declare music_data: MusicDataType[];
     declare async_key: AsyncKeyType;
     declare email: EmailDataType;
+    declare ip_track: IpTrackDataType[];
 }
 
 User.init({
@@ -75,7 +82,11 @@ User.init({
     email: {
         type: DataTypes.JSONB,
         allowNull: false,
-    }
+    },
+    ip_track: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+    },
 }, {
     sequelize,
     modelName: 'users',
