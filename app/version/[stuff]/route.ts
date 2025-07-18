@@ -1,3 +1,4 @@
+import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils"
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function GET(
 ) {
     const stuff = (await params).stuff;
     if (stuffs[stuff] == undefined) {
-        return ResponseUtils.notFound(stuff);
+        return ErrorHandler.notFound();
     }
     return ResponseUtils.successJson(stuffs[stuff]);
 }
