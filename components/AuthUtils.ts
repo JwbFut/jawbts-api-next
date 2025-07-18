@@ -1,9 +1,15 @@
 import * as jose from "jose"
-import { Jwk, RefTokenType } from "@/components/database/dbTypes";
+import { Jwk, RefTokenType, User } from "@/components/database/dbTypes";
 import { Op, Transaction } from "sequelize";
 import { ErrorHandler } from "./ErrorHandler";
+import { Resend } from "resend";
+import sequelize from "./database/db";
+import { getEmailAddress, ipinfoEmailBody } from "./EmailUtils"
+import { getPos } from "./Utils";
 
 export const jwks = jose.createRemoteJWKSet(new URL(process.env.ORIGIN_URL + "/auth/keys"));
+
+const resend = new Resend(process.env.RESEND_EMAIL_SERVICE_TOKEN);
 
 export class AuthUtils {
     static chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -33,19 +39,121 @@ export class AuthUtils {
         return res;
     }
 
+    static async recordIp(ip: string, username: string) {
+        const t = await sequelize.transaction();
+
+        const ips = await User.findOne({
+            where: {
+                username: username,
+            },
+            attributes: ["ip_track", "email"],
+            transaction: t,
+        });
+        if (!ips) {
+            t.rollback();
+            return ErrorHandler.userNotExists();
+        }
+
+        const target = ips.ip_track.find((v) => v.ip == ip);
+
+        if (!process.env.RESEND_EMAIL_SENDER) {
+            t.rollback();
+            throw new Error("RESEND_EMAIL_SENDER not set");
+        }
+
+        if (!target) {
+            ips.ip_track.push({
+                ip: ip,
+                last_visit: new Date(),
+                trusted: false,
+            });
+
+            const email = await getEmailAddress(username);
+            if (!email) {
+                t.rollback();
+                return false;
+            }
+
+            await resend.emails.send({
+                from: process.env.RESEND_EMAIL_SENDER,
+                to: email,
+                subject: "New action from an unknown IP address",
+                text: ipinfoEmailBody(ip, JSON.stringify(await getPos(ip)))
+            });
+        } else {
+            const last_visit = target.last_visit instanceof Date ? target.last_visit : new Date(Date.parse(target.last_visit));
+            const diff = new Date().getTime() - last_visit.getTime();
+
+            if (diff > 1000 * 60 * 60 * 24) {
+                ips.ip_track = ips.ip_track.filter((v) => v.ip != ip);
+                ips.ip_track.push({
+                    ip: ip,
+                    last_visit: new Date(),
+                    trusted: target.trusted,
+                });
+            }
+
+            if (!target.trusted) {
+                const email = await getEmailAddress(username);
+                if (!email) {
+                    t.rollback();
+                    return false;
+                }
+
+                await resend.emails.send({
+                    from: process.env.RESEND_EMAIL_SENDER,
+                    to: email,
+                    subject: "New action from an known untrusted IP address",
+                    text: ipinfoEmailBody(ip, JSON.stringify(await getPos(ip)))
+                });
+            }
+        }
+
+        await User.update({
+            ip_track: ips.ip_track,
+        }, {
+            where: {
+                username: username,
+            },
+            transaction: t,
+        });
+
+        await t.commit();
+        return true;
+    }
+
     static async checkLogin(request: Request, additional_scope: string[] = []) {
-        const auth = request.headers.get("Authorization");
-        if (!auth) return ErrorHandler.needLogin();
-        if (!auth.startsWith("Bearer ")) return ErrorHandler.invalidToken();
+        try {
+            const ip = request.headers.get("cf-connecting-ip");
+            if (!ip && !(process.env.NODE_ENV === "development")) return ErrorHandler.mustConnectThroughCloudflare();
 
-        const username_raw = await this.checkToken(auth.substring(7), additional_scope);
-        if (username_raw instanceof Response) return username_raw;
-        const username = username_raw.username;
+            const auth = request.headers.get("Authorization");
+            if (!auth) return ErrorHandler.needLogin();
+            if (!auth.startsWith("Bearer ")) return ErrorHandler.invalidToken();
 
-        if (!username) return ErrorHandler.invalidToken();
-        if (typeof username === "string") return { username: username };
-        if (Array.isArray(username) && username.length == 1) return { username: username[0] };
-        return ErrorHandler.invalidToken();
+            const username_raw = await this.checkToken(auth.substring(7), additional_scope);
+            if (username_raw instanceof Response) return username_raw;
+            const username = username_raw.username;
+
+            if (!username) return ErrorHandler.invalidToken();
+
+            let res;
+
+            if (typeof username === "string") res = { username: username };
+            if (Array.isArray(username) && username.length == 1) res = { username: username[0] };
+
+            if (res) {
+                let r;
+                if (ip) r = await this.recordIp(ip, res.username);
+                if (r instanceof Response) return r;
+
+                return res;
+            }
+            return ErrorHandler.invalidToken();
+        } catch (err) {
+            console.error(err);
+            return ErrorHandler.unknownError();
+        }
     }
 
     static async checkToken(token: string, additional_scope: string[] = []) {

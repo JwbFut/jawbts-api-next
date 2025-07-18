@@ -15,6 +15,7 @@ import { ResponseUtils } from "./ResponseUtils";
  * 10010: invalid form data
  * 10011: verify code expired
  * 10012: verify code invalid
+ * 10013: must connect through cloudflare
  */
 
 export class ErrorHandler {
@@ -96,5 +97,9 @@ export class ErrorHandler {
 
     static verifyCodeInvalid() {
         return ResponseUtils.json("Failed", { reason: "Verify code invalid", code: 10012 }, 400, "Bad Request");
+    }
+
+    static mustConnectThroughCloudflare() {
+        return ResponseUtils.json("Failed", { reason: "Must connect through cloudflare", code: 10013 }, 400, "Bad Request");
     }
 }
