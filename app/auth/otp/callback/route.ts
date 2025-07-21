@@ -4,6 +4,7 @@ import { User } from "@/components/database/dbTypes";
 import { ErrorHandler } from "@/components/ErrorHandler";
 import { ResponseUtils } from "@/components/ResponseUtils";
 import { userAgent } from "next/server";
+import { Transaction } from "sequelize";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,11 +17,19 @@ export async function GET(request: Request) {
     const r = ErrorHandler.checkParameter({ code: code, state: state, username: username });
     if (r) return r;
 
+    let t;
+    try {
+        t = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE });
+    } catch (e) {
+        return ErrorHandler.databaseError();
+    }
+
     let res;
     try {
         res = await User.findOne({
             attributes: ["ref_tokens"],
-            where: { username: username }
+            where: { username: username },
+            transaction: t
         });
     } catch (e) {
         return ErrorHandler.databaseError();
@@ -59,15 +68,13 @@ export async function GET(request: Request) {
     });
 
     try {
-        await sequelize.transaction(async (t) => {
-            await User.update({
-                ref_tokens: res.ref_tokens
-            }, {
-                where: {
-                    username: username
-                },
-                transaction: t
-            });
+        await User.update({
+            ref_tokens: res.ref_tokens
+        }, {
+            where: {
+                username: username
+            },
+            transaction: t
         });
     } catch (e) {
         return ErrorHandler.databaseError();
